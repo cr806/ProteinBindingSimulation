@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 im = Image.open('Left.png')
 raw_flow = np.array(im)
 
-max = np.amax(raw_flow)
-min = np.amin(raw_flow)
-norm = (raw_flow - min) / max
+max = 255
+min = 0
+norm = raw_flow / max
 # print(norm)
 scaled = norm - 0.5
 
