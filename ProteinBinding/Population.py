@@ -45,7 +45,7 @@ class Population:
         self.hist_y.append(self.y)
         self.x = self.x + (self.active * self.vx)
         self.y = self.y + (self.active * self.vy)
-        self.x, self.y = self.domain.check_extent(self.x, self.y)
+        # self.x, self.y = self.domain.check_extent(self.x, self.y)
         self.vx = np.full(self.size, 0, dtype=float)
         self.vy = np.full(self.size, 0, dtype=float)
 
@@ -89,13 +89,20 @@ class Population:
 
             # Check if particles can reach boundary
             particle_dist = np.linalg.norm(vel, axis=1)
-            dist_to_boundary = np.linalg.norm(int_xy - pos, axis=1)
+            dist_to_boundary = np.linalg.norm((int_xy - pos), axis=1)
 
             direction = np.diagonal(np.dot((int_xy - pos), vel.T)) > 1
+
+            # direction = (np.diag((int_xy - pos).T @ vel) /
+            #             np.sum((int_xy - pos)**2, axis=0) > 1)
+
             reach = dist_to_boundary <= particle_dist
 
             dir_reach = np.logical_and(direction, reach)
 
+            # overlap[dir_reach] = self.check_boundary_overlap(bl[dir_reach],
+            #                                                  bu[dir_reach],
+            #                                                  int_xy[dir_reach])
             overlap[dir_reach] = self.check_boundary_overlap(bl[dir_reach],
                                                              bu[dir_reach],
                                                              int_xy[dir_reach])
@@ -175,9 +182,14 @@ class Population:
         return m, c
 
     def check_boundary_overlap(self, bl, bu, int_xy):
-
-        overlap_x = (int_xy[:, 0] <= bu[:, 0]) * (int_xy[:, 0] >= bl[:, 0])
-        overlap_y = (int_xy[:, 1] <= bu[:, 1]) * (int_xy[:, 1] >= bl[:, 1])
+        overlap_x = (((int_xy[:, 0] <= bu[:, 0]) *
+                      (int_xy[:, 0] >= bl[:, 0])) +
+                     ((bu[:, 0] <= int_xy[:, 0]) *
+                      (bl[:, 0] >= int_xy[:, 0])))
+        overlap_y = (((int_xy[:, 1] <= bu[:, 1]) *
+                      (int_xy[:, 1] >= bl[:, 1])) +
+                     ((bu[:, 1] <= int_xy[:, 1]) *
+                      (bl[:, 1] >= int_xy[:, 1])))
         return (overlap_x * overlap_y)
 
     def get_dist(self, x_plane=False, y_plane=False):

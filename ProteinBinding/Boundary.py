@@ -4,8 +4,9 @@ import HelperFunc as hf
 
 class Boundary:
     def __init__(self, b_l, b_u, s, on, off):
-        self.lower = b_l
-        self.upper = b_u
+        margin = 0
+        self.lower = (b_l[0]-margin, b_l[1]+margin)
+        self.upper = (b_u[0]-margin, b_u[1]+margin)
         self.unit = self.get_unit(b_l, b_u)
         self.normal = self.get_normal(b_l, b_u)
         self.sticky = s

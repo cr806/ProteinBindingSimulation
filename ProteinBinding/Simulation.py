@@ -15,8 +15,8 @@ domain = Domain((-(b_x + 2), -(b_y + 2)), ((b_x + 2), (b_y + 2)))
 Must be defined in top left quadrant, i.e. x must be negative, y positive
 '''
 boundaries = []
-boundaries.append(Boundary((-50, -b_y), (50, -b_y), True, 0.75, 0.25))
-boundaries.append(Boundary((-50, b_y), (50, b_y), True, 0.75, 0.25))
+boundaries.append(Boundary((-50, -b_y), (50, -b_y), True, 1, 0))
+boundaries.append(Boundary((-50, b_y), (50, b_y), True, 1, 0))
 
 # boundaries.append(Boundary((-b_x, -b_y), (-b_x, b_y), False, 0.5, 0.5))
 # boundaries.append(Boundary((b_x, -b_y), (b_x, b_y), False, 0.5, 0.5))
