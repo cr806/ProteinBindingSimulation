@@ -1,14 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-# from Particle import Particle
-from Domain import Domain
 from Boundary import Boundary
 from Population import Population
 
 b_y = 50
 b_x = 900
-'''Create domain'''
-domain = Domain((-(b_x + 2), -(b_y + 2)), ((b_x + 2), (b_y + 2)))
 
 '''Create boundaries'''
 '''
@@ -28,32 +24,26 @@ boundaries.append(Boundary((-b_x, b_y), (-b_x, -b_y), False, 0.5, 0.5))
 
 
 '''Create a Population'''
-size = 100
-# x = np.random.uniform(-0, -0, size)
-# y = np.random.uniform(45, 45, size)
-x = np.random.uniform(-200, -150, size)
+size = 1000
+x = np.random.uniform(-600, -200, size)
 y = np.random.uniform(-45, 45, size)
-# print(f'Particle location: ({x}, {y})')
-p = Population(size, x, y, boundaries, domain)
+p = Population(size, x, y, boundaries)
 
 '''Update simulation'''
 fig, (ax, ax1, ax2) = plt.subplots(1, 3, figsize=(12, 4))
 
-total_time = 50
+total_time = 100
 filter_plot = 1
 dist_before = []
 dist_after = []
 stuck = []
 for i in range(total_time + 1):
-    # print('History:')
-    # print(f'\tX: {p.hist_x[-5:]}')
-    # print(f'\tY: {p.hist_y[-5:]}')
-    # print(f'History Length:\t{len(p.hist_x)}')
     p.update_brownian_velocity(5)
-    # p.update_Poiseuille_velocity(np.array([5, 0]), b_y)
+    p.update_Poiseuille_velocity(np.array([5, 0]), b_y)
     p.update_linear_velocity(np.array([5, 0]))
     p.check_boundaries()
-    # p.update_position(ax=ax1)
+    p.update_position()
+    p.replace_particles(old_pos=[210, None], new_pos=[[-200, -200], [-45, 45]])
     print(i)
 
     dist_before.append(p.get_dist(x_plane=-80))
@@ -67,27 +57,26 @@ for i in range(total_time + 1):
 
         ax.set_xlim([-200, 200])
         ax.set_ylim([-55, 55])
-        # ax1.set_xlim([-200, 200])
-        # ax1.set_ylim([0, size/10])
-        # ax2.set_xlim([-200, 200])
-        # ax2.set_ylim([0, size/10])
+        ax1.set_xlim([-200, 200])
+        ax1.set_ylim([0, size/10])
+        ax2.set_xlim([-200, 200])
+        ax2.set_ylim([0, size/10])
 
-        # domain.plot(ax)
         for b in boundaries:
             b.plot(ax)
-        p.update_position(ax=ax1)
-        p.plot(ax, history=True)
-        # ax1.hist(dist_before[-1])
-        # ax2.hist(dist_after[-1])
+
+        p.plot(ax, history=False)
+        ax1.hist(dist_before[-1])
+        ax2.hist(dist_after[-1])
         plt.title(f'Time step: {i} of {total_time}')
         plt.pause(0.01)
 
-# dist_before = np.concatenate(np.array(dist_before, dtype='object'))
-# dist_after = np.concatenate(np.array(dist_after, dtype='object'))
-# fig, (ax, ax1) = plt.subplots(1, 2, figsize=(8, 4))
-# ax.hist(dist_before, color='red', bins=20, alpha=0.5, label='Before')
-# ax.hist(dist_after, color='green', bins=20, alpha=0.5, label='After')
-# ax.legend()
-# ax.set_xlim([-100, 100])
-# ax1.plot(stuck)
+dist_before = np.concatenate(np.array(dist_before, dtype='object'))
+dist_after = np.concatenate(np.array(dist_after, dtype='object'))
+fig, (ax, ax1) = plt.subplots(1, 2, figsize=(8, 4))
+ax.hist(dist_before, color='red', bins=20, alpha=0.5, label='Before')
+ax.hist(dist_after, color='green', bins=20, alpha=0.5, label='After')
+ax.legend()
+ax.set_xlim([-100, 100])
+ax1.plot(stuck)
 plt.show()

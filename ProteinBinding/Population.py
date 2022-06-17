@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 class Population:
-    def __init__(self, size, initial_x, initial_y, boundaries, domain):
+    def __init__(self, size, initial_x, initial_y, boundaries):
         '''
         Defines attributes of the class: size, x- and y-position, and
         boundaries that must be considered
@@ -12,7 +12,6 @@ class Population:
         self.size = size
         self.active = np.full(size, True, dtype=bool)
         self.boundaries = boundaries
-        self.domain = domain
         self.x = initial_x
         self.y = initial_y
         self.vx = np.full(size, 0, dtype=float)
@@ -63,41 +62,29 @@ class Population:
         # self.hist_y.append(self.y)
         if (ax is not None):
             ax.plot(self.active, 'o')
-        # self.x, self.y = self.domain.check_extent(self.x, self.y)
         self.vx = np.full(self.size, 0, dtype=float)
         self.vy = np.full(self.size, 0, dtype=float)
 
     def check_boundaries(self):
-        print(f'History:\n{hf.combineVectors(self.hist_x, self.hist_y)}')
         pos = hf.combineVectors(self.x, self.y)
         vel = hf.combineVectors(self.vx, self.vy)
         f_pos = pos + vel
         to_check = np.full(self.size, True, dtype=bool)
-        # self.print_data()
-        # print(f'Future position: {f_pos}')
 
         for idx, b in enumerate(self.boundaries):
-            # print(f'Boundary {idx}')
             direction = self.check_particle_direction(b, pos, f_pos)
-            # print(f'\tDirection: {direction}')
             reach = self.check_particle_reaches(b, pos, f_pos)
-            # print(f'\tReach: {reach}')
             dir_reach = direction * reach
-            print(f'\tDir-Reach: {dir_reach}')
             int_pos = self.intersect_positions(b, pos)
-            # print(f'\tIntersection: {int_pos}')
             ref_pos = self.reflected_positions(b, f_pos)
-            print(f'\tReflection: {ref_pos}')
 
             to_update = dir_reach * to_check
             pos[to_update] = int_pos[to_update]
 
-            # print(f'Before: {self.x}, {self.y}')
             self.x[to_update] = ref_pos[:, 0][to_update]
             self.y[to_update] = ref_pos[:, 1][to_update]
             self.vx[to_update] = 0
             self.vy[to_update] = 0
-            # print(f'After: {self.x}, {self.y}')
             to_check[dir_reach] = False
 
         pos[to_check] = pos[to_check] + (vel[to_check] / 2)
@@ -147,6 +134,21 @@ class Population:
             ref_pt_x = b_start[:, 0] - (f_pos[:, 0] - b_start[:, 0])
             ref_pt_y = f_pos[:, 1]
         return hf.combineVectors(ref_pt_x, ref_pt_y)
+
+    def replace_particles(self, old_pos, new_pos):
+        to_replace = np.full(self.size, False, dtype=bool)
+        if old_pos[0]:
+            to_replace[self.x >= old_pos[0]] = True
+        else:
+            to_replace[self.x >= old_pos[0]] = True
+
+        num = np.count_nonzero(to_replace)
+        self.x[to_replace] = np.random.uniform(new_pos[0][0],
+                                               new_pos[0][1],
+                                               num)
+        self.y[to_replace] = np.random.uniform(new_pos[1][0],
+                                               new_pos[1][1],
+                                               num)
 
     # def check_boundary(self):
     #     '''
