@@ -9,7 +9,7 @@ from itertools import combinations
 n_particles = 400
 total_time = 1000
 particle_speed = 500
-particle_r = 0.015
+particle_r = 0.005
 
 plot_initial = False
 live_plot = False

@@ -19,6 +19,8 @@ class Population:
         self.vy = np.full(size, 0, dtype=float)
         self.hist_x = []
         self.hist_y = []
+        self.hist_x.append(self.x.copy())
+        self.hist_y.append(self.y.copy())
 
     def get_random_velocity(self, factor=1):
         '''
@@ -34,163 +36,319 @@ class Population:
         self.vx = self.vx + vel_x
         self.vy = self.vy + vel_y
 
-    def update_flow_velocity(self, vel):
+    def update_Poiseuille_velocity(self, factor, h):
+        self.vx = self.vx + factor[0] * ((h**2 - self.y**2) / h**2)
+        self.vy = self.vy + factor[1] * ((h**2 - self.x**2) / h**2)
+
+    def update_linear_velocity(self, vel):
         vel_x = np.full(self.size, vel[0], dtype=float)
         vel_y = np.full(self.size, vel[1], dtype=float)
         self.vx = self.vx + vel_x
         self.vy = self.vy + vel_y
 
-    def update_position(self):
-        self.hist_x.append(self.x)
-        self.hist_y.append(self.y)
+    def update_position(self, ax=None):
+        # print('Old position')
+        # print(f'\tActive:\t{self.active}')
+        # self.print_data()
+        # self.hist_x.append(self.x)
+        # self.hist_y.append(self.y)
         self.x = self.x + (self.active * self.vx)
         self.y = self.y + (self.active * self.vy)
+        self.hist_x.append(self.x.copy())
+        self.hist_y.append(self.y.copy())
+        # print('New position')
+        # print(f'\tActive:\t{self.active}')
+        # self.print_data()
+        # self.hist_x.append(self.x)
+        # self.hist_y.append(self.y)
+        if (ax is not None):
+            ax.plot(self.active, 'o')
         # self.x, self.y = self.domain.check_extent(self.x, self.y)
         self.vx = np.full(self.size, 0, dtype=float)
         self.vy = np.full(self.size, 0, dtype=float)
 
-    def check_boundary(self):
-        '''
-        Check whether particle has interacted with a boundary
-        '''
-        plot = False
-        for b in self.boundaries:
-            bl = np.full([self.size, 2], b.lower, dtype=float)
-            bu = np.full([self.size, 2], b.upper, dtype=float)
-            b_normal = np.full([self.size, 2], b.normal, dtype=float)
-            overlap = np.full(self.size, False, dtype=bool)
+    def check_boundaries(self):
+        print(f'History:\n{hf.combineVectors(self.hist_x, self.hist_y)}')
+        pos = hf.combineVectors(self.x, self.y)
+        vel = hf.combineVectors(self.vx, self.vy)
+        f_pos = pos + vel
+        to_check = np.full(self.size, True, dtype=bool)
+        # self.print_data()
+        # print(f'Future position: {f_pos}')
 
-            # Calculate distance moved by particle and distance to
-            # boundary intersection point
-            pos = hf.combineVectors(self.x, self.y)
-            vel = hf.combineVectors(self.vx, self.vy)
-            new_vel = hf.reflectVector(b_normal, vel)
-            int_xy = self.find_intersection_point(bl, bu)
+        for idx, b in enumerate(self.boundaries):
+            # print(f'Boundary {idx}')
+            direction = self.check_particle_direction(b, pos, f_pos)
+            # print(f'\tDirection: {direction}')
+            reach = self.check_particle_reaches(b, pos, f_pos)
+            # print(f'\tReach: {reach}')
+            dir_reach = direction * reach
+            print(f'\tDir-Reach: {dir_reach}')
+            int_pos = self.intersect_positions(b, pos)
+            # print(f'\tIntersection: {int_pos}')
+            ref_pos = self.reflected_positions(b, f_pos)
+            print(f'\tReflection: {ref_pos}')
 
-            if plot:
-                fig, ax = plt.subplots(figsize=(5, 5))
-                for i in range(self.size):
-                    ax.plot([0, vel[i, 0]],
-                            [0, vel[i, 1]],
-                            'o-',
-                            markersize=20,
-                            label=f'Inc. {i}')
-                    ax.plot([0, new_vel[i, 0]],
-                            [0, new_vel[i, 1]],
-                            'o-',
-                            markersize=10,
-                            label=f'Ref. {i}')
-                    ax.plot([0, b_normal[0, 0]],
-                            [0, b_normal[0, 1]],
-                            'o-',
-                            label=f'B. {b_normal[0]}')
-                ax.legend()
-                plot = False
+            to_update = dir_reach * to_check
+            pos[to_update] = int_pos[to_update]
 
-            # Check if particles can reach boundary
-            particle_dist = np.linalg.norm(vel, axis=1)
-            dist_to_boundary = np.linalg.norm((int_xy - pos), axis=1)
+            # print(f'Before: {self.x}, {self.y}')
+            self.x[to_update] = ref_pos[:, 0][to_update]
+            self.y[to_update] = ref_pos[:, 1][to_update]
+            self.vx[to_update] = 0
+            self.vy[to_update] = 0
+            # print(f'After: {self.x}, {self.y}')
+            to_check[dir_reach] = False
 
-            direction = np.diagonal(np.dot((int_xy - pos), vel.T)) > 1
+        pos[to_check] = pos[to_check] + (vel[to_check] / 2)
+        self.hist_x.append(pos[:, 0].copy())
+        self.hist_y.append(pos[:, 1].copy())
 
-            # direction = (np.diag((int_xy - pos).T @ vel) /
-            #             np.sum((int_xy - pos)**2, axis=0) > 1)
+    def check_particle_direction(self, b, pos, f_pos):
+        horizontal = b.direction[0]
+        b_start = np.full([self.size, 2], b.start, dtype=float)
+        if horizontal:
+            p_dist = f_pos[:, 1] - pos[:, 1]
+            b_dist = b_start[:, 1] - pos[:, 1]
+            return p_dist * b_dist > 0
+        else:
+            p_dist = f_pos[:, 0] - pos[:, 0]
+            b_dist = b_start[:, 0] - pos[:, 0]
+            return p_dist * b_dist > 0
 
-            reach = dist_to_boundary <= particle_dist
+    def check_particle_reaches(self, b, pos, f_pos):
+        horizontal = b.direction[0]
+        b_start = np.full([self.size, 2], b.start, dtype=float)
+        if horizontal:
+            p_dist = f_pos[:, 1] - pos[:, 1]
+            b_dist = b_start[:, 1] - pos[:, 1]
+            return np.abs(p_dist) >= np.abs(b_dist)
+        else:
+            p_dist = f_pos[:, 0] - pos[:, 0]
+            b_dist = b_start[:, 0] - pos[:, 0]
+            return np.abs(p_dist) >= np.abs(b_dist)
 
-            dir_reach = np.logical_and(direction, reach)
+    def intersect_positions(self, b, pos):
+        horizontal = b.direction[0]
+        b_start = np.full([self.size, 2], b.start, dtype=float)
+        if horizontal:
+            int_pos = hf.combineVectors(pos[:, 0], b_start[:, 1])
+        else:
+            int_pos = hf.combineVectors(b_start[:, 0], pos[:, 1])
+        return int_pos
 
-            # overlap[dir_reach] = self.check_boundary_overlap(bl[dir_reach],
-            #                                                  bu[dir_reach],
-            #                                                  int_xy[dir_reach])
-            overlap[dir_reach] = self.check_boundary_overlap(bl[dir_reach],
-                                                             bu[dir_reach],
-                                                             int_xy[dir_reach])
+    def reflected_positions(self, b, f_pos):
+        horizontal = b.direction[0]
+        b_start = np.full([self.size, 2], b.start, dtype=float)
+        if horizontal:
+            ref_pt_x = f_pos[:, 0]
+            ref_pt_y = b_start[:, 1] - (f_pos[:, 1] - b_start[:, 1])
+        else:
+            ref_pt_x = b_start[:, 0] - (f_pos[:, 0] - b_start[:, 0])
+            ref_pt_y = f_pos[:, 1]
+        return hf.combineVectors(ref_pt_x, ref_pt_y)
 
-            self.x[overlap] = int_xy[:, 0][overlap]
-            self.y[overlap] = int_xy[:, 1][overlap]
-            self.vx[overlap] = new_vel[:, 0][overlap]
-            self.vy[overlap] = new_vel[:, 1][overlap]
+    # def check_boundary(self):
+    #     '''
+    #     Check whether particle has interacted with a boundary
+    #     '''
+    #     print('Check boundary')
+    #     self.print_data()
+    #     plot = False
+    #     pos = hf.combineVectors(self.x, self.y)
+    #     vel = hf.combineVectors(self.vx, self.vy)
+    #     f_pos = pos + vel
+    #     for idx, b in enumerate(self.boundaries):
+    #         print(f'1. Boundary {idx}')
+    #         self.print_data()
+    #         bl = np.full([self.size, 2], b.start, dtype=float)
+    #         bu = np.full([self.size, 2], b.end, dtype=float)
+    #         b_dir = np.full([self.size, 2], b.direction, dtype=bool)
+    #         b_normal = np.full([self.size, 2], b.normal, dtype=float)
+    #         overlap = np.full(self.size, False, dtype=bool)
+    #         print(f'2. Boundary {idx}')
+    #         self.print_data()
 
-            if b.sticky:
-                to_stick = np.random.uniform(0, 1, self.size) < b.on
-                stuck = np.logical_and(overlap, to_stick)
-                to_unstick = np.random.uniform(0, 1, self.size) < b.off
-                unstuck = np.logical_and(~self.active, to_unstick)
-                # self.x[unstuck] = (self.x[unstuck] +
-                #                    (self.active[unstuck] * self.vx[unstuck]))
-                # self.y[unstuck] = (self.y[unstuck] +
-                #                    (self.active[unstuck] * self.vy[unstuck]))
-                self.active[unstuck] = True
-                self.active[stuck] = False
+    #         # Calculate distance moved by particle and distance to
+    #         # boundary intersection point
 
-    def find_intersection_point(self, bl, bu):
-        '''
-        Calculate the point at which the particle would intersect
-        with the boundary if the boundary was infinite in length
-        '''
-        # Check for horizontal or vertical trajectory or boundary
-        p_vert = self.vx == 0
-        p_hor = self.vy == 0
-        p_angle = ~(np.logical_or(p_vert, p_hor))
-        b_vert, b_hor = (bl[0] - bu[0]) == 0
-        b_angle = not(b_vert or b_hor)
+    #         # new_vel = hf.reflectVector(b_normal, vel)
+    #         new_vel_x = self.vx - 2 * (b_dir[:, 1] * self.vx)
+    #         new_vel_y = self.vy - 2 * (b_dir[:, 0] * self.vy)
+    #         new_vel = hf.combineVectors(new_vel_x, new_vel_y)
+    #         print(f'3. Boundary {idx}')
+    #         print(f'\tNew V:\t{new_vel}')
+    #         self.print_data()
 
-        # print(f'Particle: {p_vert}, {p_hor}, {p_angle}')
-        # print(f'Boundary: {b_vert}, {b_hor}, {b_angle}')
+    #         int_xy = self.find_intersection_point(bl, bu)
+    #         print(f'4. Boundary {idx}')
+    #         print(f'\tNew V:\t{new_vel}')
+    #         print(f'\tIntersection;\t{int_xy}')
+    #         self.print_data()
 
-        # Return intersection if particle trajectory is vertical or horizontal
-        mp, cp = self.get_line_equ(self.x + self.vx, self.y + self.vy,
-                                   self.x, self.y)
-        mp[mp == 0] = 0.00001  # Used to avoid divide by zero error
+    #         if plot:
+    #             fig, ax = plt.subplots(figsize=(5, 5))
+    #             for i in range(self.size):
+    #                 ax.plot([0, vel[i, 0]],
+    #                         [0, vel[i, 1]],
+    #                         'o-',
+    #                         markersize=20,
+    #                         label=f'Inc. {i}')
+    #                 ax.plot([0, new_vel[i, 0]],
+    #                         [0, new_vel[i, 1]],
+    #                         'o-',
+    #                         markersize=10,
+    #                         label=f'Ref. {i}')
+    #                 ax.plot([0, b_normal[0, 0]],
+    #                         [0, b_normal[0, 1]],
+    #                         'o-',
+    #                         label=f'B. {b_normal[0]}')
+    #             ax.legend()
+    #             plot = False
 
-        bx = bl[0, 0]
-        by = bl[0, 1]
-        if b_vert:
-            intersection_x = bl[:, 0]
-            intersection_y = ((p_vert * 100000) +
-                              (p_hor * self.y) +
-                              (p_angle * ((mp * bx) + cp)))
-        if b_hor:
-            intersection_x = ((p_vert * self.x) +
-                              (p_hor * 100000) +
-                              (p_angle * ((by - cp) / mp)))
-            intersection_y = bl[:, 1]
-        if b_angle:
-            m, c = self.get_line_equ(bl[:, 0], bl[:, 1], bu[:, 0], bu[:, 1])
-            m[m == 0] = 0.00001  # Used to avoid divide by zero error
-            intersection_x = ((p_vert * self.x) +
-                              (p_hor * (self.y - c) / m) +
-                              (p_angle * ((c - cp) / (mp - m))))
-            intersection_y = ((p_vert * (m * self.x) + c) +
-                              (p_hor * self.y) +
-                              (p_angle * (((cp * m) - (c * mp)) / (mp - m))))
+    #         # Check if particles can reach boundary
+    #         # particle_dist = np.linalg.norm(vel, axis=1)
+    #         # dist_to_boundary = np.linalg.norm((int_xy - pos), axis=1)
 
-        return hf.combineVectors(intersection_x, intersection_y)
+    #         # direction = np.diagonal(np.dot((int_xy - pos), vel.T)) > 1
 
-    def get_line_equ(self, a_x, a_y, b_x, b_y):
-        '''
-        Find equations of particle tradjectory and boundary
-        i.e y = mx + c
-        '''
-        dy = b_y - a_y
-        dx = b_x - a_x
-        dx[dx == 0] = 0.00001  # avoid divide-by-zero
-        m = dy / dx
-        c = b_y - (m * b_x)
+    #         # direction = (np.diag((int_xy - pos).T @ vel) /
+    #         #             np.sum((int_xy - pos)**2, axis=0) > 1)
 
-        return m, c
+    #         # reach = dist_to_boundary <= particle_dist
+    #         # dir_reach = np.logical_and(direction, reach)
 
-    def check_boundary_overlap(self, bl, bu, int_xy):
-        overlap_x = (((int_xy[:, 0] <= bu[:, 0]) *
-                      (int_xy[:, 0] >= bl[:, 0])) +
-                     ((bu[:, 0] <= int_xy[:, 0]) *
-                      (bl[:, 0] >= int_xy[:, 0])))
-        overlap_y = (((int_xy[:, 1] <= bu[:, 1]) *
-                      (int_xy[:, 1] >= bl[:, 1])) +
-                     ((bu[:, 1] <= int_xy[:, 1]) *
-                      (bl[:, 1] >= int_xy[:, 1])))
-        return (overlap_x * overlap_y)
+    #         reach_horizontal = (b_dir[:, 0] *
+    #                             (np.abs(f_pos[:, 1]) > np.abs(bl[:, 1])))
+    #         reach_vertical = (b_dir[:, 1] *
+    #                           (np.abs(f_pos[:, 0]) > np.abs(bl[:, 0])))
+    #         # print(reach_horizontal + reach_vertical)
+    #         dir_reach = reach_horizontal + reach_vertical
+    #         print(f'5. Boundary {idx}')
+    #         print(f'\tNew V:\t{new_vel}')
+    #         print(f'\tIntersection;\t{int_xy}')
+    #         print(f'\tDir-Reach:\t{dir_reach}')
+    #         self.print_data()
+
+    #         # overlap[dir_reach] = self.check_boundary_overlap(bl[dir_reach],
+    #         #                                                  bu[dir_reach],
+    #         #                                                  int_xy[dir_reach])
+    #         overlap[dir_reach] = self.check_boundary_overlap(bl[dir_reach],
+    #                                                          bu[dir_reach],
+    #                                                          int_xy[dir_reach])
+
+    #         self.hist_x.append(self.x)
+    #         self.hist_y.append(self.y)
+    #         self.x[overlap] = int_xy[:, 0][overlap]
+    #         self.y[overlap] = int_xy[:, 1][overlap]
+    #         self.vx[overlap] = new_vel[:, 0][overlap]
+    #         self.vy[overlap] = new_vel[:, 1][overlap]
+    #         # self.hist_x.append(self.x)
+    #         # self.hist_y.append(self.y)
+    #         print(f'6. Boundary {idx}')
+    #         print(f'\tNew V:\t{new_vel}')
+    #         print(f'\tIntersection;\t{int_xy}')
+    #         print(f'\tDir-Reach:\t{dir_reach}')
+    #         print(f'\tOverlap:\t{overlap}')
+    #         self.print_data()
+
+    #         if b.sticky:
+    #             to_stick = np.random.uniform(0, 1, self.size) < b.on
+    #             stuck = np.logical_and(overlap, to_stick)
+    #             to_unstick = np.random.uniform(0, 1, self.size) < b.off
+    #             unstuck = np.logical_and(~self.active, to_unstick)
+    #             # self.x[unstuck] = (self.x[unstuck] +
+    #             #                    (self.active[unstuck] * self.vx[unstuck]))
+    #             # self.y[unstuck] = (self.y[unstuck] +
+    #             #                    (self.active[unstuck] * self.vy[unstuck]))
+    #             print(f'7. Boundary {idx}')
+    #             print(f'\tNew V:\t{new_vel}')
+    #             print(f'\tIntersection;\t{int_xy}')
+    #             print(f'\tDir-Reach:\t{dir_reach}')
+    #             print(f'\tOverlap:\t{overlap}')
+    #             print(f'\tStuck:\t{stuck}')
+    #             print(f'\tUn-stuck:\t{unstuck}')
+    #             print(f'\tActive:\t{self.active}')
+    #             self.print_data()
+    #             self.active[unstuck] = True
+    #             self.active[stuck] = False
+    #             print(f'7. Boundary {idx}')
+    #             print(f'\toverlap:\t{overlap}')
+    #             print(f'\tNew V:\t{new_vel}')
+    #             print(f'\tIntersection;\t{int_xy}')
+    #             print(f'\tDir-Reach:\t{dir_reach}')
+    #             print(f'\tOverlap:\t{overlap}')
+    #             print(f'\tStuck:\t{stuck}')
+    #             print(f'\tUn-stuck:\t{unstuck}')
+    #             print(f'\tActive:\t{self.active}')
+
+    # def find_intersection_point(self, bl, bu):
+    #     '''
+    #     Calculate the point at which the particle would intersect
+    #     with the boundary if the boundary was infinite in length
+    #     '''
+    #     # Check for horizontal or vertical trajectory or boundary
+    #     p_vert = self.vx == 0
+    #     p_hor = self.vy == 0
+    #     p_angle = ~(np.logical_or(p_vert, p_hor))
+    #     b_vert, b_hor = (bl[0] - bu[0]) == 0
+    #     b_angle = not(b_vert or b_hor)
+
+    #     # print(f'Particle: {p_vert}, {p_hor}, {p_angle}')
+    #     # print(f'Boundary: {b_vert}, {b_hor}, {b_angle}')
+
+    #     # Return intersection if particle trajectory is vertical or horizontal
+    #     mp, cp = self.get_line_equ(self.x, self.y,
+    #                                self.x + self.vx, self.y + self.vy)
+    #     mp[mp == 0] = 0.00001  # Used to avoid divide by zero error
+
+    #     bx = bl[0, 0]
+    #     by = bl[0, 1]
+    #     if b_vert:
+    #         intersection_x = bl[:, 0]
+    #         intersection_y = ((p_vert * 100000) +
+    #                           (p_hor * self.y) +
+    #                           (p_angle * ((mp * bx) + cp)))
+    #     if b_hor:
+    #         intersection_x = ((p_vert * self.x) +
+    #                           (p_hor * 100000) +
+    #                           (p_angle * ((by - cp) / mp)))
+    #         intersection_y = bl[:, 1]
+    #     if b_angle:
+    #         m, c = self.get_line_equ(bl[:, 0], bl[:, 1], bu[:, 0], bu[:, 1])
+    #         m[m == 0] = 0.00001  # Used to avoid divide by zero error
+    #         intersection_x = ((p_vert * self.x) +
+    #                           (p_hor * (self.y - c) / m) +
+    #                           (p_angle * ((c - cp) / (mp - m))))
+    #         intersection_y = ((p_vert * (m * self.x) + c) +
+    #                           (p_hor * self.y) +
+    #                           (p_angle * (((cp * m) - (c * mp)) / (mp - m))))
+
+    #     return hf.combineVectors(intersection_x, intersection_y)
+
+    # def get_line_equ(self, a_x, a_y, b_x, b_y):
+    #     '''
+    #     Find equations of particle tradjectory and boundary
+    #     i.e y = mx + c
+    #     '''
+    #     dy = b_y - a_y
+    #     dx = b_x - a_x
+    #     dx[dx == 0] = 0.00001  # avoid divide-by-zero
+    #     m = dy / dx
+    #     c = b_y - (m * b_x)
+
+    #     return m, c
+
+    # def check_boundary_overlap(self, bl, bu, int_xy):
+    #     overlap_x = (((int_xy[:, 0] <= bu[:, 0]) *
+    #                   (int_xy[:, 0] >= bl[:, 0])) +
+    #                  ((bu[:, 0] <= int_xy[:, 0]) *
+    #                   (bl[:, 0] >= int_xy[:, 0])))
+    #     overlap_y = (((int_xy[:, 1] <= bu[:, 1]) *
+    #                   (int_xy[:, 1] >= bl[:, 1])) +
+    #                  ((bu[:, 1] <= int_xy[:, 1]) *
+    #                   (bl[:, 1] >= int_xy[:, 1])))
+    #     return (overlap_x * overlap_y)
 
     def get_dist(self, x_plane=False, y_plane=False):
         if x_plane:
