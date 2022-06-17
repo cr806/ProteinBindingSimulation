@@ -1,6 +1,6 @@
 import numpy as np
 import HelperFunc as hf
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 class Population:
@@ -46,20 +46,10 @@ class Population:
         self.vy = self.vy + vel_y
 
     def update_position(self, ax=None):
-        # print('Old position')
-        # print(f'\tActive:\t{self.active}')
-        # self.print_data()
-        # self.hist_x.append(self.x)
-        # self.hist_y.append(self.y)
         self.x = self.x + (self.active * self.vx)
         self.y = self.y + (self.active * self.vy)
         self.hist_x.append(self.x.copy())
         self.hist_y.append(self.y.copy())
-        # print('New position')
-        # print(f'\tActive:\t{self.active}')
-        # self.print_data()
-        # self.hist_x.append(self.x)
-        # self.hist_y.append(self.y)
         if (ax is not None):
             ax.plot(self.active, 'o')
         self.vx = np.full(self.size, 0, dtype=float)
@@ -234,7 +224,7 @@ class Population:
 
     #         # overlap[dir_reach] = self.check_boundary_overlap(bl[dir_reach],
     #         #                                                  bu[dir_reach],
-    #         #                                                  int_xy[dir_reach])
+    #         #                                              int_xy[dir_reach])
     #         overlap[dir_reach] = self.check_boundary_overlap(bl[dir_reach],
     #                                                          bu[dir_reach],
     #                                                          int_xy[dir_reach])
@@ -260,9 +250,11 @@ class Population:
     #             to_unstick = np.random.uniform(0, 1, self.size) < b.off
     #             unstuck = np.logical_and(~self.active, to_unstick)
     #             # self.x[unstuck] = (self.x[unstuck] +
-    #             #                    (self.active[unstuck] * self.vx[unstuck]))
+    #             #                    (self.active[unstuck] *
+    #                                   self.vx[unstuck]))
     #             # self.y[unstuck] = (self.y[unstuck] +
-    #             #                    (self.active[unstuck] * self.vy[unstuck]))
+    #             #                    (self.active[unstuck] *
+    #                                   self.vy[unstuck]))
     #             print(f'7. Boundary {idx}')
     #             print(f'\tNew V:\t{new_vel}')
     #             print(f'\tIntersection;\t{int_xy}')
@@ -299,7 +291,8 @@ class Population:
     #     # print(f'Particle: {p_vert}, {p_hor}, {p_angle}')
     #     # print(f'Boundary: {b_vert}, {b_hor}, {b_angle}')
 
-    #     # Return intersection if particle trajectory is vertical or horizontal
+    #     # Return intersection if particle trajectory is vertical
+    #     # or horizontal
     #     mp, cp = self.get_line_equ(self.x, self.y,
     #                                self.x + self.vx, self.y + self.vy)
     #     mp[mp == 0] = 0.00001  # Used to avoid divide by zero error
