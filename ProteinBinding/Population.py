@@ -62,21 +62,39 @@ class Population:
         f_pos = pos + vel
         to_check = np.full(self.size, True, dtype=bool)
 
-        for idx, b in enumerate(self.boundaries):
+        for b in self.boundaries:
+            update = self.active == b.ID
+            unstick = np.random.uniform(0, 1, self.size)
+            unstick = unstick <= b.off
+            update = update * unstick
+            self.active[update] = -1
+
+        for b in self.boundaries:
+            free_particles = self.active == -1
             direction = self.check_particle_direction(b, pos, f_pos)
             reach = self.check_particle_reaches(b, pos, f_pos)
-            dir_reach = direction * reach
             int_pos = self.intersect_positions(b, pos)
             ref_pos = self.reflected_positions(b, f_pos)
+            overlap = self.check_overlaps_boundary(b, int_pos)
+            dir_reach = direction * reach
 
-            to_update = dir_reach * to_check
-            pos[to_update] = int_pos[to_update]
+            to_update = dir_reach * to_check * free_particles
 
-            self.x[to_update] = ref_pos[:, 0][to_update]
-            self.y[to_update] = ref_pos[:, 1][to_update]
-            self.vx[to_update] = 0
-            self.vy[to_update] = 0
-            to_check[dir_reach] = False
+            # pos[to_update] = int_pos[to_update]
+
+            if b.sticky:
+                self.x[to_update] = int_pos[:, 0][to_update]
+                self.y[to_update] = int_pos[:, 1][to_update]
+                self.vx[to_update] = 0
+                self.vy[to_update] = 0
+                self.active[to_update] = b.ID
+                to_check[dir_reach] = False
+            else:
+                self.x[to_update] = ref_pos[:, 0][to_update]
+                self.y[to_update] = ref_pos[:, 1][to_update]
+                self.vx[to_update] = 0
+                self.vy[to_update] = 0
+                to_check[dir_reach] = False
 
         pos[to_check] = pos[to_check] + (vel[to_check] / 2)
         self.hist_x.append(pos[:, 0].copy())
@@ -108,11 +126,17 @@ class Population:
 
     def intersect_positions(self, b, pos):
         horizontal = b.direction[0]
-        b_start = np.full([self.size, 2], b.start, dtype=float)
+        b_start = np.full([self.size, 2], np.abs(b.start), dtype=float)
+        b_sign = np.full([self.size, 2], np.sign(b.start), dtype=float)
         if horizontal:
-            int_pos = hf.combineVectors(pos[:, 0], b_start[:, 1])
+            # Ensure particles stay within domain, never on boundary so that
+            # when they 'unstick' from a boundary they are not able to leave
+            # simulation domain - direction check is invalid for zero
+            int_pos = hf.combineVectors(pos[:, 0],
+                                        b_sign[:, 1] * (b_start[:, 1] - 0.1))
         else:
-            int_pos = hf.combineVectors(b_start[:, 0], pos[:, 1])
+            int_pos = hf.combineVectors(b_sign[:, 0] * (b_start[:, 0] - 0.1),
+                                        pos[:, 1])
         return int_pos
 
     def reflected_positions(self, b, f_pos):
@@ -141,6 +165,19 @@ class Population:
                                                new_pos[1][1],
                                                num)
 
+    # def check_overlaps_boundary(self, b, int_pos):
+    #     b_start = np.full([self.size, 2], b.start, dtype=float)
+    #     b_end = np.full([self.size, 2], b.start, dtype=float)
+    #     overlap_x = (((int_xy[:, 0] <= bu[:, 0]) *
+    #                     (int_xy[:, 0] >= bl[:, 0])) +
+    #                     ((bu[:, 0] <= int_xy[:, 0]) *
+    #                     (bl[:, 0] >= int_xy[:, 0])))
+    #     overlap_y = (((int_xy[:, 1] <= bu[:, 1]) *
+    #                     (int_xy[:, 1] >= bl[:, 1])) +
+    #                     ((bu[:, 1] <= int_xy[:, 1]) *
+    #                     (bl[:, 1] >= int_xy[:, 1])))
+    #     return (overlap_x * overlap_y)
+    
     # def check_boundary(self):
     #     '''
     #     Check whether particle has interacted with a boundary
