@@ -3,7 +3,8 @@ import HelperFunc as hf
 
 
 class Boundary:
-    def __init__(self, b_start, b_end, s, on, off):
+    def __init__(self, ID, b_start, b_end, s, on, off):
+        self.ID = ID
         self.direction = (b_start[1] == b_end[1], b_start[0] == b_end[0])
         self.start = b_start
         self.end = b_end

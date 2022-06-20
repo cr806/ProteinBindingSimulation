@@ -10,7 +10,7 @@ class Population:
         boundaries that must be considered
         '''
         self.size = size
-        self.active = np.full(size, True, dtype=bool)
+        self.active = np.full(size, -1, dtype=int)
         self.boundaries = boundaries
         self.x = initial_x
         self.y = initial_y
@@ -46,12 +46,13 @@ class Population:
         self.vy = self.vy + vel_y
 
     def update_position(self, ax=None):
-        self.x = self.x + (self.active * self.vx)
-        self.y = self.y + (self.active * self.vy)
+        update = self.active == -1
+        self.x = self.x + (update * self.vx)
+        self.y = self.y + (update * self.vy)
         self.hist_x.append(self.x.copy())
         self.hist_y.append(self.y.copy())
         if (ax is not None):
-            ax.plot(self.active, 'o')
+            ax.plot(update, 'o')
         self.vx = np.full(self.size, 0, dtype=float)
         self.vy = np.full(self.size, 0, dtype=float)
 
@@ -248,12 +249,13 @@ class Population:
     #             to_stick = np.random.uniform(0, 1, self.size) < b.on
     #             stuck = np.logical_and(overlap, to_stick)
     #             to_unstick = np.random.uniform(0, 1, self.size) < b.off
-    #             unstuck = np.logical_and(~self.active, to_unstick)
+    #             update = self.active == -1
+    #             unstuck = np.logical_and(~update, to_unstick)
     #             # self.x[unstuck] = (self.x[unstuck] +
-    #             #                    (self.active[unstuck] *
+    #             #                    (update[unstuck] *
     #                                   self.vx[unstuck]))
     #             # self.y[unstuck] = (self.y[unstuck] +
-    #             #                    (self.active[unstuck] *
+    #             #                    (update[unstuck] *
     #                                   self.vy[unstuck]))
     #             print(f'7. Boundary {idx}')
     #             print(f'\tNew V:\t{new_vel}')
@@ -264,8 +266,8 @@ class Population:
     #             print(f'\tUn-stuck:\t{unstuck}')
     #             print(f'\tActive:\t{self.active}')
     #             self.print_data()
-    #             self.active[unstuck] = True
-    #             self.active[stuck] = False
+    #             self.active[unstuck] = -1
+    #             self.active[stuck] = b.ID
     #             print(f'7. Boundary {idx}')
     #             print(f'\toverlap:\t{overlap}')
     #             print(f'\tNew V:\t{new_vel}')
@@ -356,17 +358,19 @@ class Population:
             return self.x[np.logical_and(gt, lt)]
 
     def get_stuck(self):
-        return np.count_nonzero(~self.active)
+        update = self.active == -1
+        return np.count_nonzero(~update)
 
     def print_data(self):
         print('\tPos\tVel')
         print(f'\t({self.x}, {self.y})\t({self.vx}, {self.vy})')
 
     def plot(self, ax, history=False):
-        ax.plot(self.x[self.active],
-                self.y[self.active], '*')
-        ax.plot(self.x[~self.active],
-                self.y[~self.active],
+        update = self.active == -1
+        ax.plot(self.x[update],
+                self.y[update], '*')
+        ax.plot(self.x[~update],
+                self.y[~update],
                 'go', alpha=0.5)
 
         if history:
