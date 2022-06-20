@@ -11,17 +11,20 @@ b_x = 900
 Must be defined in top left quadrant, i.e. x must be negative, y positive
 '''
 boundaries = []
-boundaries.append(Boundary(5, (-50, -b_y), (50, -b_y), True, 1, 0))
-# boundaries.append(Boundary((-50, b_y), (50, b_y), True, 1, 0))
+boundaries.append(Boundary(5, (-50, -b_y), (50, -b_y), True, 0.5, 0.25, 15))
+boundaries.append(Boundary(6, (-50, b_y), (50, b_y), True, 0.5, 0.25, 15))
 
-# boundaries.append(Boundary((-b_x, -b_y), (-b_x, b_y), False, 0.5, 0.5))
-# boundaries.append(Boundary((b_x, -b_y), (b_x, b_y), False, 0.5, 0.5))
-# boundaries.append(Boundary((-b_x, -b_y), (-50, -b_y), False, 0.5, 0.5))
-boundaries.append(Boundary(1, (-b_x, -b_y), (-50, -b_y), False, 0.5, 0.5))
-boundaries.append(Boundary(1, (-50, -b_y), (b_x, -b_y), False, 0.5, 0.5))
-boundaries.append(Boundary(2, (-b_x, b_y), (b_x, b_y), False, 0.5, 0.5))
-boundaries.append(Boundary(3, (b_x, b_y), (b_x, -b_y), False, 0.5, 0.5))
-boundaries.append(Boundary(4, (-b_x, b_y), (-b_x, -b_y), False, 0.5, 0.5))
+# boundaries.append(Boundary((-b_x, -b_y), (-b_x, b_y), False, 0.5, 0.5, 100))
+# boundaries.append(Boundary((b_x, -b_y), (b_x, b_y), False, 0.5, 0.5, 100))
+# boundaries.append(Boundary((-b_x, -b_y), (-50, -b_y), False, 0.5, 0.5, 100))
+boundaries.append(Boundary(1, (-b_x, -b_y), (-50, -b_y), False, 0.5, 0.5, 100))
+boundaries.append(Boundary(1, (-50, -b_y), (b_x, -b_y), False, 0.5, 0.5, 100))
+
+boundaries.append(Boundary(2, (-b_x, b_y), (-50, b_y), False, 0.5, 0.5, 100))
+boundaries.append(Boundary(2, (50, b_y), (b_x, b_y), False, 0.5, 0.5, 100))
+
+boundaries.append(Boundary(3, (b_x, b_y), (b_x, -b_y), False, 0.5, 0.5, 100))
+boundaries.append(Boundary(4, (-b_x, b_y), (-b_x, -b_y), False, 0.5, 0.5, 100))
 
 
 '''Create a Population'''
@@ -33,8 +36,8 @@ p = Population(size, x, y, boundaries)
 '''Update simulation'''
 fig, (ax, ax1, ax2) = plt.subplots(1, 3, figsize=(12, 4))
 
-total_time = 100
-filter_plot = 1
+total_time = 1000
+filter_plot = 250
 dist_before = []
 dist_after = []
 stuck = []
@@ -45,7 +48,7 @@ for i in range(total_time + 1):
     p.check_boundaries()
     p.update_position()
     p.replace_particles(old_pos=[210, None], new_pos=[[-200, -200], [-45, 45]])
-    print(i)
+    # print(i)
 
     dist_before.append(p.get_dist(x_plane=-80))
     dist_after.append(p.get_dist(x_plane=80))

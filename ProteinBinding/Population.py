@@ -63,13 +63,19 @@ class Population:
         to_check = np.full(self.size, True, dtype=bool)
 
         for b in self.boundaries:
-            update = self.active == b.ID
+            to_update = self.active == b.ID
             unstick = np.random.uniform(0, 1, self.size)
-            unstick = unstick <= b.off
-            update = update * unstick
-            self.active[update] = -1
+            unstick = unstick < b.off
+            to_update = to_update * unstick
+            self.active[to_update] = -1
 
         for b in self.boundaries:
+            already_stuck = self.active == b.ID
+            no_already_stuck = np.count_nonzero(already_stuck)
+            boundary_full = False
+            if b.sticky and (no_already_stuck >= b.limit):
+                boundary_full = True
+
             free_particles = self.active == -1
             direction = self.check_particle_direction(b, pos, f_pos)
             reach = self.check_particle_reaches(b, pos, f_pos)
@@ -80,7 +86,19 @@ class Population:
 
             to_update = dir_reach * to_check * free_particles
 
-            if b.sticky:
+            if b.sticky and not boundary_full:
+                num_want_to_stick = np.count_nonzero(to_update)
+                to_stick = b.limit - no_already_stuck
+                idxs = to_update.nonzero()[0]
+                if idxs.size > to_stick:
+                    to_update[idxs[to_stick]:] = False
+                    self.x[idxs[to_stick:]] = ref_pos[:, 0][idxs[to_stick:]]
+                    self.y[idxs[to_stick:]] = ref_pos[:, 1][idxs[to_stick:]]
+                    self.vx[idxs[to_stick:]] = 0
+                    self.vy[idxs[to_stick:]] = 0
+                print('')
+                print(f'Particles on boundary {b.ID} = {num_want_to_stick}')
+                print(f'Particles to stick to {b.ID} = {idxs.size}')
                 self.x[to_update] = int_pos[:, 0][to_update]
                 self.y[to_update] = int_pos[:, 1][to_update]
                 self.vx[to_update] = 0
