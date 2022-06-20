@@ -76,11 +76,9 @@ class Population:
             int_pos = self.intersect_positions(b, pos)
             ref_pos = self.reflected_positions(b, f_pos)
             overlap = self.check_overlaps_boundary(b, int_pos)
-            dir_reach = direction * reach
+            dir_reach = direction * reach * overlap
 
             to_update = dir_reach * to_check * free_particles
-
-            # pos[to_update] = int_pos[to_update]
 
             if b.sticky:
                 self.x[to_update] = int_pos[:, 0][to_update]
@@ -165,19 +163,23 @@ class Population:
                                                new_pos[1][1],
                                                num)
 
-    # def check_overlaps_boundary(self, b, int_pos):
-    #     b_start = np.full([self.size, 2], b.start, dtype=float)
-    #     b_end = np.full([self.size, 2], b.start, dtype=float)
-    #     overlap_x = (((int_xy[:, 0] <= bu[:, 0]) *
-    #                     (int_xy[:, 0] >= bl[:, 0])) +
-    #                     ((bu[:, 0] <= int_xy[:, 0]) *
-    #                     (bl[:, 0] >= int_xy[:, 0])))
-    #     overlap_y = (((int_xy[:, 1] <= bu[:, 1]) *
-    #                     (int_xy[:, 1] >= bl[:, 1])) +
-    #                     ((bu[:, 1] <= int_xy[:, 1]) *
-    #                     (bl[:, 1] >= int_xy[:, 1])))
-    #     return (overlap_x * overlap_y)
-    
+    def check_overlaps_boundary(self, b, int_pos):
+        b_start = np.full([self.size, 2], b.start, dtype=float)
+        b_end = np.full([self.size, 2], b.end, dtype=float)
+        horizontal = b.direction[0]
+        if horizontal:
+            overlap1 = ((int_pos[:, 0] >= b_start[:, 0]) *
+                        (int_pos[:, 0] <= b_end[:, 0]))
+            overlap2 = ((int_pos[:, 0] <= b_start[:, 0]) *
+                        (int_pos[:, 0] >= b_end[:, 0]))
+            return (overlap1 + overlap2)
+        else:
+            overlap1 = ((int_pos[:, 1] >= b_start[:, 1]) *
+                        (int_pos[:, 1] <= b_end[:, 1]))
+            overlap2 = ((int_pos[:, 1] <= b_start[:, 1]) *
+                        (int_pos[:, 1] >= b_end[:, 1]))
+            return (overlap1 + overlap2)
+
     # def check_boundary(self):
     #     '''
     #     Check whether particle has interacted with a boundary
