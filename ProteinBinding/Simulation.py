@@ -11,13 +11,14 @@ b_x = 900
 Must be defined in top left quadrant, i.e. x must be negative, y positive
 '''
 boundaries = []
-# boundaries.append(Boundary((-50, -b_y), (50, -b_y), True, 1, 0))
+boundaries.append(Boundary(5, (-50, -b_y), (50, -b_y), True, 1, 0))
 # boundaries.append(Boundary((-50, b_y), (50, b_y), True, 1, 0))
 
 # boundaries.append(Boundary((-b_x, -b_y), (-b_x, b_y), False, 0.5, 0.5))
 # boundaries.append(Boundary((b_x, -b_y), (b_x, b_y), False, 0.5, 0.5))
 # boundaries.append(Boundary((-b_x, -b_y), (-50, -b_y), False, 0.5, 0.5))
-boundaries.append(Boundary(1, (-b_x, -b_y), (b_x, -b_y), False, 0.5, 0.5))
+boundaries.append(Boundary(1, (-b_x, -b_y), (-50, -b_y), False, 0.5, 0.5))
+boundaries.append(Boundary(1, (-50, -b_y), (b_x, -b_y), False, 0.5, 0.5))
 boundaries.append(Boundary(2, (-b_x, b_y), (b_x, b_y), False, 0.5, 0.5))
 boundaries.append(Boundary(3, (b_x, b_y), (b_x, -b_y), False, 0.5, 0.5))
 boundaries.append(Boundary(4, (-b_x, b_y), (-b_x, -b_y), False, 0.5, 0.5))
