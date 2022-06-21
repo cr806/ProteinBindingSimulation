@@ -46,4 +46,4 @@ class Boundary:
             ax.plot([self.start[0], self.end[0]],
                     [self.start[1], self.end[1]],
                     'r--')
-            # ax.plot(self.normal[0], self.normal[1], '*k')
+

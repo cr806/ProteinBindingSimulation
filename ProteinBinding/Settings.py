@@ -1,7 +1,7 @@
 SIZE = 1000  # Number of particles to simulate
-TOTAL_TIME = 5000  # Number of iterations
-ON = 0.8
-OFF = 0.001
+TOTAL_TIME = 7000  # Number of iterations
+ON = 0.3
+OFF = 0.00085
 LIMIT = 300
 
 HIST_BEFORE = -80  # Where to measure particle density

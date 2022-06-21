@@ -223,6 +223,46 @@ class Population:
                         (int_pos[:, 1] >= b_end[:, 1]))
             return (overlap1 + overlap2)
 
+    def get_dist(self, x_plane=False, y_plane=False):
+        if x_plane:
+            gt = self.x > (x_plane - 10)
+            lt = self.x < (x_plane + 10)
+            return self.y[np.logical_and(gt, lt)]
+        if y_plane:
+            gt = self.y > (y_plane - 10)
+            lt = self.y < (y_plane + 10)
+            return self.x[np.logical_and(gt, lt)]
+
+    def get_stuck(self):
+        update = self.active == -1
+        return np.count_nonzero(~update)
+
+    def print_data(self):
+        print('\tPos\tVel')
+        print(f'\t({self.x}, {self.y})\t({self.vx}, {self.vy})')
+
+    def plot(self, ax, history=False):
+        update = self.active == -1
+        ax.plot(self.x[update],
+                self.y[update], '*')
+        ax.plot(self.x[~update],
+                self.y[~update],
+                'go', alpha=0.5)
+
+        if history:
+            h_x = np.array(self.hist_x)
+            h_y = np.array(self.hist_y)
+            drawlines = []
+            for data_x, data_y in zip(h_x.T, h_y.T):
+                drawlines.append(data_x)
+                drawlines.append(data_y)
+            ax.plot(*drawlines,
+                    color='blue',
+                    linestyle='dotted',
+                    marker='o',
+                    markersize='0.5',
+                    linewidth='0.5')
+
     # def find_intersection_point(self, bl, bu):
     #     '''
     #     Calculate the point at which the particle would intersect
@@ -280,43 +320,3 @@ class Population:
     #     c = b_y - (m * b_x)
 
     #     return m, c
-
-    def get_dist(self, x_plane=False, y_plane=False):
-        if x_plane:
-            gt = self.x > (x_plane - 10)
-            lt = self.x < (x_plane + 10)
-            return self.y[np.logical_and(gt, lt)]
-        if y_plane:
-            gt = self.y > (y_plane - 10)
-            lt = self.y < (y_plane + 10)
-            return self.x[np.logical_and(gt, lt)]
-
-    def get_stuck(self):
-        update = self.active == -1
-        return np.count_nonzero(~update)
-
-    def print_data(self):
-        print('\tPos\tVel')
-        print(f'\t({self.x}, {self.y})\t({self.vx}, {self.vy})')
-
-    def plot(self, ax, history=False):
-        update = self.active == -1
-        ax.plot(self.x[update],
-                self.y[update], '*')
-        ax.plot(self.x[~update],
-                self.y[~update],
-                'go', alpha=0.5)
-
-        if history:
-            h_x = np.array(self.hist_x)
-            h_y = np.array(self.hist_y)
-            drawlines = []
-            for data_x, data_y in zip(h_x.T, h_y.T):
-                drawlines.append(data_x)
-                drawlines.append(data_y)
-            ax.plot(*drawlines,
-                    color='blue',
-                    linestyle='dotted',
-                    marker='o',
-                    markersize='0.5',
-                    linewidth='0.5')

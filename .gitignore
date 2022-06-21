@@ -2,6 +2,7 @@
 **/.vscode
 **/__pycache__
 **/ProteinBinding/Test.py
+**/ProteinBinding/OLD RESULTS
 .DS_Store
 Attractor.png
 Diffusion_v1.py
