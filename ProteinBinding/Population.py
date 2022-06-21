@@ -1,5 +1,7 @@
 import numpy as np
 import HelperFunc as hf
+from Settings import SIZE
+
 # import matplotlib.pyplot as plt
 
 
@@ -18,8 +20,8 @@ class Population:
         self.vy = np.full(size, 0, dtype=float)
         self.hist_x = []
         self.hist_y = []
-        self.hist_x.append(self.x.copy())
-        self.hist_y.append(self.y.copy())
+        self.hist_x.append(np.copy(self.x))
+        self.hist_y.append(np.copy(self.y))
 
     def get_random_velocity(self, factor=1):
         '''
@@ -49,8 +51,8 @@ class Population:
         update = self.active == -1
         self.x = self.x + (update * self.vx)
         self.y = self.y + (update * self.vy)
-        self.hist_x.append(self.x.copy())
-        self.hist_y.append(self.y.copy())
+        self.hist_x.append(np.copy(self.x))
+        self.hist_y.append(np.copy(self.y))
         if (ax is not None):
             ax.plot(update, 'o')
         self.vx = np.full(self.size, 0, dtype=float)
@@ -61,13 +63,6 @@ class Population:
         vel = hf.combineVectors(self.vx, self.vy)
         f_pos = pos + vel
         to_check = np.full(self.size, True, dtype=bool)
-
-        for b in self.boundaries:
-            to_update = self.active == b.ID
-            unstick = np.random.uniform(0, 1, self.size)
-            unstick = unstick < b.off
-            to_update = to_update * unstick
-            self.active[to_update] = -1
 
         for b in self.boundaries:
             already_stuck = self.active == b.ID
@@ -87,23 +82,23 @@ class Population:
             to_update = dir_reach * to_check * free_particles
 
             if b.sticky and not boundary_full:
-                num_want_to_stick = np.count_nonzero(to_update)
+                chance_to_stick = np.random.uniform(0, 1, self.size)
+                chance_to_stick = chance_to_stick < b.on
+                update = to_update * chance_to_stick
+
                 to_stick = b.limit - no_already_stuck
-                idxs = to_update.nonzero()[0]
+                idxs = update.nonzero()[0]
                 if idxs.size > to_stick:
-                    to_update[idxs[to_stick]:] = False
+                    update[idxs[to_stick]:] = False
                     self.x[idxs[to_stick:]] = ref_pos[:, 0][idxs[to_stick:]]
                     self.y[idxs[to_stick:]] = ref_pos[:, 1][idxs[to_stick:]]
                     self.vx[idxs[to_stick:]] = 0
                     self.vy[idxs[to_stick:]] = 0
-                print('')
-                print(f'Particles on boundary {b.ID} = {num_want_to_stick}')
-                print(f'Particles to stick to {b.ID} = {idxs.size}')
-                self.x[to_update] = int_pos[:, 0][to_update]
-                self.y[to_update] = int_pos[:, 1][to_update]
-                self.vx[to_update] = 0
-                self.vy[to_update] = 0
-                self.active[to_update] = b.ID
+                self.x[update] = int_pos[:, 0][update]
+                self.y[update] = int_pos[:, 1][update]
+                self.vx[update] = 0
+                self.vy[update] = 0
+                self.active[update] = b.ID
                 to_check[dir_reach] = False
             else:
                 self.x[to_update] = ref_pos[:, 0][to_update]
@@ -112,9 +107,16 @@ class Population:
                 self.vy[to_update] = 0
                 to_check[dir_reach] = False
 
+            for b in self.boundaries:
+                to_update = self.active == b.ID
+                unstick = np.random.uniform(0, 1, self.size)
+                unstick = unstick < b.off
+                update = to_update * unstick
+                self.active[update] = -1
+
         pos[to_check] = pos[to_check] + (vel[to_check] / 2)
-        self.hist_x.append(pos[:, 0].copy())
-        self.hist_y.append(pos[:, 1].copy())
+        self.hist_x.append(np.copy(pos[:, 0]))
+        self.hist_y.append(np.copy(pos[:, 1]))
 
     def check_particle_direction(self, b, pos, f_pos):
         horizontal = b.direction[0]
@@ -167,19 +169,42 @@ class Population:
         return hf.combineVectors(ref_pt_x, ref_pt_y)
 
     def replace_particles(self, old_pos, new_pos):
-        to_replace = np.full(self.size, False, dtype=bool)
+        # Reposition particles that have reached certain position
         if old_pos[0]:
-            to_replace[self.x >= old_pos[0]] = True
+            to_reposition = self.x >= old_pos[0]
         else:
-            to_replace[self.x >= old_pos[0]] = True
+            to_reposition = self.y >= old_pos[1]
+        num = np.count_nonzero(to_reposition)
+        self.reset_particle_position(to_reposition, new_pos, num)
 
-        num = np.count_nonzero(to_replace)
-        self.x[to_replace] = np.random.uniform(new_pos[0][0],
-                                               new_pos[0][1],
-                                               num)
-        self.y[to_replace] = np.random.uniform(new_pos[1][0],
-                                               new_pos[1][1],
-                                               num)
+        # Compensate for particles trapped on boundaries
+        to_add = SIZE - np.count_nonzero(self.active == -1)
+        if to_add > 0:
+            self.create_new_particles(new_pos, to_add)
+
+    def reset_particle_position(self, to_reposition, new_pos, num):
+        self.x[to_reposition] = np.random.uniform(new_pos[0][0],
+                                                  new_pos[0][1],
+                                                  num)
+        self.y[to_reposition] = np.random.uniform(new_pos[1][0],
+                                                  new_pos[1][1],
+                                                  num)
+
+    def create_new_particles(self, new_pos, to_add):
+        x_ = np.random.uniform(new_pos[0][0], new_pos[0][1], to_add)
+        y_ = np.random.uniform(new_pos[1][0], new_pos[1][1], to_add)
+        vx_ = np.full(to_add, 0, dtype=float)
+        vy_ = np.full(to_add, 0, dtype=float)
+        active_ = np.full(to_add, -1, dtype=int)
+        self.x = np.concatenate((self.x, x_))
+        self.vx = np.concatenate((self.y, vx_))
+        self.y = np.concatenate((self.y, y_))
+        self.vy = np.concatenate((self.vy, vy_))
+        self.active = np.concatenate((self.active, active_))
+        self.update_size()
+
+    def update_size(self):
+        self.size = self.x.size
 
     def check_overlaps_boundary(self, b, int_pos):
         b_start = np.full([self.size, 2], b.start, dtype=float)
