@@ -16,20 +16,31 @@ def Simulate(on=ON, off=OFF, limit=LIMIT, size=SIZE):
     b_y = 50
     b_x = 700
     boundaries = []
-    boundaries.append(Boundary(5, (-50, -b_y), (50, -b_y), True, on, off, limit))
-    # boundaries.append(Boundary(6, (-50, b_y), (50, b_y), True, 0.5, 0.25, 15))
+    boundaries.append(Boundary(5, (-50, -b_y), (50, -b_y),
+                               True, on, off, limit))
+    # boundaries.append(Boundary(6, (-50, b_y), (50, b_y),
+    #                            True, 0.5, 0.25, 15))
 
-    # boundaries.append(Boundary((-b_x, -b_y), (-b_x, b_y), False, 0.5, 0.5, 100))
-    # boundaries.append(Boundary((b_x, -b_y), (b_x, b_y), False, 0.5, 0.5, 100))
-    # boundaries.append(Boundary((-b_x, -b_y), (-50, -b_y), False, 0.5, 0.5, 100))
-    boundaries.append(Boundary(1, (-b_x, -b_y), (-50, -b_y), False, 0.5, 0.5, 100))
-    boundaries.append(Boundary(1, (-50, -b_y), (b_x, -b_y), False, 0.5, 0.5, 100))
+    # boundaries.append(Boundary((-b_x, -b_y), (-b_x, b_y),
+    #                            False, 0.5, 0.5, 100))
+    # boundaries.append(Boundary((b_x, -b_y), (b_x, b_y),
+    #                            False, 0.5, 0.5, 100))
+    # boundaries.append(Boundary((-b_x, -b_y), (-50, -b_y),
+    #                            False, 0.5, 0.5, 100))
+    boundaries.append(Boundary(1, (-b_x, -b_y), (-50, -b_y),
+                               False, 0.5, 0.5, 100))
+    boundaries.append(Boundary(1, (-50, -b_y), (b_x, -b_y),
+                               False, 0.5, 0.5, 100))
 
-    boundaries.append(Boundary(2, (-b_x, b_y), (b_x, b_y), False, 0.5, 0.5, 100))
-    # boundaries.append(Boundary(2, (50, b_y), (b_x, b_y), False, 0.5, 0.5, 100))
+    boundaries.append(Boundary(2, (-b_x, b_y), (b_x, b_y),
+                               False, 0.5, 0.5, 100))
+    # boundaries.append(Boundary(2, (50, b_y), (b_x, b_y),
+    #                            False, 0.5, 0.5, 100))
 
-    boundaries.append(Boundary(3, (b_x, b_y), (b_x, -b_y), False, 0.5, 0.5, 100))
-    boundaries.append(Boundary(4, (-b_x, b_y), (-b_x, -b_y), False, 0.5, 0.5, 100))
+    boundaries.append(Boundary(3, (b_x, b_y), (b_x, -b_y),
+                               False, 0.5, 0.5, 100))
+    boundaries.append(Boundary(4, (-b_x, b_y), (-b_x, -b_y),
+                               False, 0.5, 0.5, 100))
 
     '''CREATE SIMULATION DOMAIN'''
     d = Domain([-b_x, -b_y], [b_x, b_y])
@@ -52,7 +63,8 @@ def Simulate(on=ON, off=OFF, limit=LIMIT, size=SIZE):
         p.update_Poiseuille_velocity(np.array([6, 0]), b_y)
         # p.update_linear_velocity(np.array([5, 0]))
         p.check_boundaries()
-        p.replace_particles(old_pos=[210, None], new_pos=[[-600, -200], [-45, 45]])
+        p.replace_particles(old_pos=[210, None],
+                            new_pos=[[-600, -200], [-45, 45]])
         p.update_position()
         d.check_extent(p.x, p.y)
         # print(f'Simulation interation: {i} / {TOTAL_TIME}')
@@ -93,7 +105,7 @@ def Simulate(on=ON, off=OFF, limit=LIMIT, size=SIZE):
 
 if __name__ == '__main__':
     limit = LIMIT
-    dist_before, dist_after, stuck = Simulate(limit=limit)
+    dist_before, dist_after, stuck = Simulate(on=0, limit=limit)
 
     fig, (ax, ax1) = plt.subplots(1, 2, figsize=(8, 4))
     ax.hist(dist_before, color='red', bins=20, alpha=0.5, label='Before')
